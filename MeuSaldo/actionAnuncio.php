@@ -1,146 +1,397 @@
-<?php include "header.php" ?>
+<?php
+
+include "header.php";
+include "conexaoBD.php";
+
+
+if (!isset($_SESSION['logado']) || $_SESSION['logado'] !== true) {
+
+    header("Location: formlogin.php");
+    exit();
+
+}
+
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+
+    header("Location: formAnuncio.php");
+    exit();
+
+}
+
+if (!isset($_SESSION['idUsuario'])) {
+
+    header("Location: formlogin.php");
+    exit();
+
+}
+
+$idUsuario = (int) $_SESSION['idUsuario'];
+
+
+$nomeProduto = trim($_POST['nomeProduto'] ?? '');
+
+$estoqueProduto = trim($_POST['estoqueProduto'] ?? '');
+
+$categoriaAnuncio = trim($_POST['categoriaAnuncio'] ?? '');
+
+$valorCustoAnuncio = trim($_POST['valorCustoAnuncio'] ?? '');
+
+$valorAnuncio = trim($_POST['valorAnuncio'] ?? '');
+
+
+
+$erros = array();
+
+
+if ($nomeProduto === '') {
+
+    $erros[] = "O nome do produto é obrigatório.";
+
+}
+
+elseif (mb_strlen($nomeProduto) > 30) {
+
+    $erros[] = "O nome do produto pode ter no máximo 30 caracteres.";
+
+}
+
+
+if ($estoqueProduto === '') {
+
+    $erros[] = "O estoque é obrigatório.";
+
+}
+
+elseif (!filter_var($estoqueProduto, FILTER_VALIDATE_INT) &&
+        $estoqueProduto !== '0') {
+
+    $erros[] = "O estoque deve ser um número inteiro.";
+
+}
+
+else {
+
+    $estoqueProduto = (int) $estoqueProduto;
+
+    if ($estoqueProduto < 0) {
+
+        $erros[] = "O estoque não pode ser negativo.";
+
+    }
+
+}
+
+
+if ($categoriaAnuncio === '') {
+
+    $erros[] = "A categoria é obrigatória.";
+
+}
+
+elseif (mb_strlen($categoriaAnuncio) > 50) {
+
+    $erros[] = "A categoria pode ter no máximo 50 caracteres.";
+
+}
+
+
+
+// CONVERTE VALORES
+// Exemplo: 50,00 -> 50.00
+
+$valorCustoAnuncio = str_replace('.', '', $valorCustoAnuncio);
+
+$valorCustoAnuncio = str_replace(',', '.', $valorCustoAnuncio);
+
+
+$valorAnuncio = str_replace('.', '', $valorAnuncio);
+
+$valorAnuncio = str_replace(',', '.', $valorAnuncio);
+
+
+
+if ($valorCustoAnuncio === '') {
+
+    $erros[] = "O valor de custo é obrigatório.";
+
+}
+
+elseif (!is_numeric($valorCustoAnuncio)) {
+
+    $erros[] = "O valor de custo deve ser um número válido.";
+
+}
+
+elseif ((float)$valorCustoAnuncio < 0) {
+
+    $erros[] = "O valor de custo não pode ser negativo.";
+
+}
+
+
+
+
+if ($valorAnuncio === '') {
+
+    $erros[] = "O valor de venda é obrigatório.";
+
+}
+
+elseif (!is_numeric($valorAnuncio)) {
+
+    $erros[] = "O valor de venda deve ser um número válido.";
+
+}
+
+elseif ((float)$valorAnuncio < 0) {
+
+    $erros[] = "O valor de venda não pode ser negativo.";
+
+}
+
+
+
+
+if (!empty($erros)) {
+
+?>
+
+<!DOCTYPE html>
+
+<html lang="pt-br">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>Erro - MeuSaldo</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+    <link href="css/styles.css"
+          rel="stylesheet">
+
+</head>
+
+<body class="bg-primary">
+
+    <div class="container">
+
+        <div class="row justify-content-center">
+
+            <div class="col-lg-6">
+
+                <div class="card shadow-lg border-0 rounded-lg mt-5">
+
+                    <div class="card-header">
+
+                        <h3 class="text-center my-4">
+                            Erro no cadastro
+                        </h3>
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <?php
+
+                        foreach ($erros as $erro) {
+
+                            echo "
+
+                            <div class='alert alert-warning'>
+
+                                " . htmlspecialchars($erro) . "
+
+                            </div>
+
+                            ";
+
+                        }
+
+                        ?>
+
+                        <a href="formAnuncio.php"
+                           class="btn btn-primary w-100">
+
+                            Voltar para o cadastro
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
 
 <?php
-    //Verifica se o método de envio do formAnuncio é POST
-    if($_SERVER["REQUEST_METHOD"] == "POST"){
-        //Cria variáveis para armazenar as informações passadas pelo $_POST[]
-        $nomeProduto = $estoqueProduto = $categoriaAnuncio = $valorCustoAnuncio = $valorAnuncio = "";
 
-        //Variável booleana para controle de erros de preenchimento
-        $erroPreenchimento = false;
+    exit();
+
+}
 
 
-        //Validação do campo nomeProduto
-        //Utiliza a função empty() para verificar se o $_POST["nomeProduto"] está vazio
-        if(empty($_POST["nomeProduto"])){
-            //Se estiver vazio, exibe alerta e altera a variável $erroPreenchimento para true
-            echo "<div class='alert alert-warning text-center'>O campo <strong>TÍTULO DO ANÚNCIO</strong> é obrigatório!</div>";
-            $erroPreenchimento = true;
-        }
-        else{
-            //Se não estiver vazio, o dado é filtrado e armazenado na variável PHP
-            $nomeProduto = filtrar_entrada($_POST["nomeProduto"]);
-        }
-
-        //Validação do campo estoqueProduto
-        //Utiliza a função empty() para verificar se o $_POST["estoqueProduto"] está vazio
-        if(empty($_POST["estoqueProduto"])){
-            //Se estiver vazio, exibe alerta e altera a variável $erroPreenchimento para true
-            echo "<div class='alert alert-warning text-center'>O campo <strong>ESTOQUE DO PRODUTO</strong> é obrigatório!</div>";
-            $erroPreenchimento = true;
-        }
-        else{
-            //Se não estiver vazio, o dado é filtrado e armazenado na variável PHP
-            $estoqueProduto = filtrar_entrada($_POST["estoqueProduto"]);
-        }
-
-        //Validação do campo categoriaAnuncio
-        //Utiliza a função empty() para verificar se o $_POST["categoriaAnuncio"] está vazio
-        if(empty($_POST["categoriaAnuncio"])){
-            //Se estiver vazio, exibe alerta e altera a variável $erroPreenchimento para true
-            echo "<div class='alert alert-warning text-center'>O campo <strong>CATEGORIA</strong> é obrigatório!</div>";
-            $erroPreenchimento = true;
-        }
-        else{
-            //Se não estiver vazio, o dado é filtrado e armazenado na variável PHP
-            $categoriaAnuncio = filtrar_entrada($_POST["categoriaAnuncio"]);
-        }
-
-         //Validação do campo valorCustoAnuncio
-        //Utiliza a função empty() para verificar se o $_POST["valorCustoAnuncio"] está vazio
-        if(empty($_POST["valorCustoAnuncio"])){
-            //Se estiver vazio, exibe alerta e altera a variável $erroPreenchimento para true
-            echo "<div class='alert alert-warning text-center'>O campo <strong>VALOR DE CUSTO DO PRODUTO</strong> é obrigatório!</div>";
-            $erroPreenchimento = true;
-        }
-        else{
-            //Se não estiver vazio, o dado é filtrado e armazenado na variável PHP
-            $valorCustoAnuncio = filtrar_entrada($_POST["valorCustoAnuncio"]);
-        }
-        //Validação do campo valorAnuncio
-        //Utiliza a função empty() para verificar se o $_POST["valorAnuncio"] está vazio
-        if(empty($_POST["valorAnuncio"])){
-            //Se estiver vazio, exibe alerta e altera a variável $erroPreenchimento para true
-            echo "<div class='alert alert-warning text-center'>O campo <strong>VALOR DO ANÚNCIO</strong> é obrigatório!</div>";
-            $erroPreenchimento = true;
-        }
-        else{
-            //Se não estiver vazio, o dado é filtrado e armazenado na variável PHP
-            $valorAnuncio = filtrar_entrada($_POST["valorAnuncio"]);
-        }
-
-        //Verifica se não há erros de preenchimento ou erros de upload da foto
-        if(!$erroPreenchimento && !$erroUpload){
-
-            //Cria uma variável para armazenar a QUERY que realiza a inserção de dados do Usuário na tabela Anuncios
-            $inserirAnuncio = "INSERT INTO Anuncios (Usuarios_idUsuario, nomeProduto, estoqueProduto, categoriaAnuncio, valorAnuncio, valorCustoAnuncio)
-                            VALUES ($idUsuario, '$nomeProduto', '$estoqueProduto', '$categoriaAnuncio', '$valorCustoAnuncio', '$valorAnuncio')";
-
-            //Inclui o arquivo de conexão com o Banco de Dados
-            include "conexaoBD.php";
-
-            //A função mysqli_connect() executa a QUERY no BD
-            //Se conseguir executar a QUERY, exibe alerta de sucesso e a tabela com os dados cadastrados
-            if(mysqli_query($conn, $inserirAnuncio)){
-
-            }
-            else{
-                echo "<div class='alert alert-danger text-center'>Erro ao tentar cadastrar <strong>USUÁRIO</strong> no banco de dados $database!</div>";
-            }
-        }
 
 
-    }
-    else{
-        //Usa a função header() para redirecionar o usuário para o formAnuncio.php
-        header("location:formAnuncio.php");
-    }
+$valorCustoAnuncio = (float) $valorCustoAnuncio;
 
-    //Função para filtrar entrada de dados
-    function filtrar_entrada($dado){
-        $dado = trim($dado); //Remove espaços desnecessários
-        $dado = stripslashes($dado); //Remove barras invertidas
-        $dado = htmlspecialchars($dado); //Converte caracteres especiais em entidades HTML
+$valorAnuncio = (float) $valorAnuncio;
 
-        //Após filtrado, o dado é retornado
-        return($dado);
-    }
+
+
+$sql = "INSERT INTO anuncios
+        (
+            Usuarios_idUsuario,
+            nomeProduto,
+            estoqueProduto,
+            categoriaAnuncio,
+            valorCustoAnuncio,
+            valorAnuncio
+        )
+        VALUES (?, ?, ?, ?, ?, ?)";
+
+
+$stmt = mysqli_prepare($conn, $sql);
+
+
+
+if (!$stmt) {
+
+    die(
+        "Erro ao preparar o cadastro: "
+        . mysqli_error($conn)
+    );
+
+}
+
+
+
+
+mysqli_stmt_bind_param(
+    $stmt,
+    "isissd",
+    $idUsuario,
+    $nomeProduto,
+    $estoqueProduto,
+    $categoriaAnuncio,
+    $valorCustoAnuncio,
+    $valorAnuncio
+);
+
+
+
+
+if (mysqli_stmt_execute($stmt)) {
+
+
+    // Fecha o comando
+
+    mysqli_stmt_close($stmt);
+
+
+    // Fecha a conexão
+
+    mysqli_close($conn);
+
+
+    // CADASTRO REALIZADO
+    // Volta para a Home
+
+    header("Location: index.php?cadastro=sucesso");
+
+    exit();
+
+
+}
+
+
+// ERRO NO INSERT
+
+$erroBanco = mysqli_stmt_error($stmt);
+
+mysqli_stmt_close($stmt);
+
+mysqli_close($conn);
+
 ?>
+
+<!DOCTYPE html>
+
 <html lang="pt-br">
+
 <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
-    <title>Login - MeuSaldo</title>
-    <link href="css/styles.css" rel="stylesheet" />
-    <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
+
+    <meta charset="utf-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>Erro - MeuSaldo</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
+    <link href="css/styles.css"
+          rel="stylesheet">
+
 </head>
+
 <body class="bg-primary">
-    
-        <div id="layoutAuthentication">
-            <div id="layoutAuthentication_content">
-                <main>
-                    <div class="container">
-                        <div class="row justify-content-center">
-                            <div class="col-lg-5">
-                                <div class="card shadow-lg border-0 rounded-lg mt-5">
-                                    <div class="card-header"><h3 class="text-center font-weight-light my-4">Produto Cadastrado com sucesso!</h3></div>
-                                    <div class="card-body">
-                                        <form action="listaProdutos.php" method="POST">
-                                            <div class="d-flex align-items-center justify-content-between mt-4 mb-0">
-                                                <button type="submit" class="btn btn-primary w-100" href="formLogin.php">
-                                                    Ver Produtos
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
+    <div class="container">
+
+        <div class="row justify-content-center">
+
+            <div class="col-lg-6">
+
+                <div class="card shadow-lg border-0 rounded-lg mt-5">
+
+                    <div class="card-header">
+
+                        <h3 class="text-center my-4">
+                            Erro ao cadastrar
+                        </h3>
+
                     </div>
-                </main>
+
+                    <div class="card-body">
+
+                        <div class="alert alert-danger">
+
+                            Não foi possível cadastrar o produto
+                            no banco de dados.
+
+                        </div>
+
+                        <a href="formAnuncio.php"
+                           class="btn btn-primary w-100">
+
+                            Voltar para o cadastro
+
+                        </a>
+
+                    </div>
+
+                </div>
+
             </div>
+
+        </div>
+
+    </div>
+
 </body>
+
 </html>
